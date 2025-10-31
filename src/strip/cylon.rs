@@ -38,6 +38,10 @@ impl<const N: usize> Cylon<N> {
             fade: fade.unwrap_or(Self::DEFAULT_FADE),
         }
     }
+
+    pub fn red(size: Option<usize>, fade: Option<f32>) -> Self {
+        Self::new(Srgb::<u8>::new(255, 0, 0), size, fade)
+    }
 }
 
 impl<const N: usize> EffectIterator for Cylon<N> {
@@ -66,7 +70,7 @@ impl<const N: usize> EffectIterator for Cylon<N> {
         }
 
         // render
-        for i in 0..len {
+        for (i, slot) in buf.iter_mut().enumerate().take(len) {
             let mut brightness = 0.0f32;
             // head segment [start - size + 1 ..= start]
             if self.start + 1 >= self.size {
@@ -76,34 +80,27 @@ impl<const N: usize> EffectIterator for Cylon<N> {
                 }
             }
             // trail
-            let mut val = 0.8f32;
             match self.direction {
                 Direction::Forward => {
                     if self.start + 1 > self.size {
                         let tail_end = self.start + 1 - self.size; // inclusive index behind head
                         if i <= tail_end {
                             let dist = (tail_end - i) as f32;
-                            val = (0.8 - self.fade * dist).max(0.0);
-                            brightness += val;
+                            brightness += (0.8 - self.fade * dist).max(0.0);
                         }
                     }
                 }
                 Direction::Backward => {
                     if i >= self.start {
                         let dist = (i - self.start) as f32;
-                        val = (0.8 - self.fade * dist).max(0.0);
-                        brightness += val;
+                        brightness += (0.8 - self.fade * dist).max(0.0);
                     }
                 }
             }
             let mut hsv = self.colour;
             hsv.value = brightness.min(1.0);
             let srgb8: Srgb<u8> = Srgb::from_color(hsv).into_format();
-            buf[i] = RGB8 {
-                r: srgb8.red,
-                g: srgb8.green,
-                b: srgb8.blue,
-            };
+            *slot = RGB8 { r: srgb8.red, g: srgb8.green, b: srgb8.blue };
         }
         Some(len)
     }

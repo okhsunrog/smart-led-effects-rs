@@ -25,6 +25,8 @@ impl<const N: usize> Rainbow<N> {
             step_size,
         }
     }
+
+    pub fn new_default() -> Self { Self::new(None) }
 }
 
 impl<const N: usize> EffectIterator for Rainbow<N> {
@@ -37,9 +39,8 @@ impl<const N: usize> EffectIterator for Rainbow<N> {
             pixel.shift_hue_assign(self.step_size);
         }
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
-            let rgb = crate::utils::hsv_to_rgb8_pixel(self.last_state[i]);
-            buf[i] = rgb;
+        for (i, slot) in buf.iter_mut().enumerate().take(len) {
+            *slot = crate::utils::hsv_to_rgb8_pixel(self.last_state[i]);
         }
         Some(len)
     }

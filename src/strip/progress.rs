@@ -40,16 +40,14 @@ impl<const N: usize> EffectIterator for ProgressBar<N> {
         let percentage = self.current_value.clamp(0.0, 100.0);
         let pixels = N - (self.pixels_per_percent * (100.0 - percentage)) as usize;
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
-            buf[i] = RGB8 { r: 0, g: 0, b: 0 };
-        }
+        for slot in buf.iter_mut().take(len) { *slot = RGB8 { r:0, g:0, b:0 }; }
         if self.gradient {
-            for i in 0..core::cmp::min(pixels, len) {
+            for (i, slot) in buf.iter_mut().enumerate().take(core::cmp::min(pixels, len)) {
                 let p: Srgb<u8> = self
                     .start_colour
                     .mix(self.end_colour, i as f32 / N as f32)
                     .into_format();
-                buf[i] = RGB8 {
+                *slot = RGB8 {
                     r: p.red,
                     g: p.green,
                     b: p.blue,
@@ -63,9 +61,7 @@ impl<const N: usize> EffectIterator for ProgressBar<N> {
                 g: p.green,
                 b: p.blue,
             };
-            for i in 0..core::cmp::min(pixels, len) {
-                buf[i] = px;
-            }
+            for slot in buf.iter_mut().take(core::cmp::min(pixels, len)) { *slot = px; }
         }
         Some(len)
     }

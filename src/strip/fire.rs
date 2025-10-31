@@ -22,6 +22,8 @@ impl<const N: usize, R: RngCore> Fire<N, R> {
         }
     }
 
+    pub fn default(rng: R) -> Self { Self::new(rng, None, None) }
+
     fn heat_to_colour(val: u8) -> RGB8 {
         let (r, g, b) = if val >= 0x85 {
             let heat_ramp = 3u8.saturating_mul(val - 0x85);
@@ -63,8 +65,8 @@ impl<const N: usize, R: RngCore> EffectIterator for Fire<N, R> {
         }
         // write colours
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
-            buf[i] = Self::heat_to_colour(self.heat[i]);
+        for (i, slot) in buf.iter_mut().enumerate().take(len) {
+            *slot = Self::heat_to_colour(self.heat[i]);
         }
         Some(len)
     }

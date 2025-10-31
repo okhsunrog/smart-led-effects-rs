@@ -152,9 +152,7 @@ impl<const N: usize, const M: usize, R: RngCore> EffectIterator for Bounce<N, M,
     }
     fn next_line(&mut self, buf: &mut [RGB8], dt_ticks: u32) -> Option<usize> {
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
-            buf[i] = RGB8 { r: 0, g: 0, b: 0 };
-        }
+        for slot in buf.iter_mut().take(len) { *slot = RGB8 { r:0, g:0, b:0 }; }
         let dt_sec = dt_ticks as f32 / 1000.0;
         for ball in self.balls.iter_mut() {
             ball.update(dt_sec, &mut self.rng);

@@ -28,7 +28,7 @@ impl<'a, const N: usize, R: RngCore> Wipe<'a, N, R> {
         }
     }
 
-    pub fn colour_wipe(mut rng: R, colour: Option<RGB8>, reverse: bool) -> Self {
+    pub fn colour_wipe(rng: R, colour: Option<RGB8>, reverse: bool) -> Self {
         let mut me = Self::new(rng, &[], reverse);
         match colour {
             Some(c) => me.fill_wipe(c),
@@ -66,9 +66,9 @@ impl<'a, const N: usize, R: RngCore> EffectIterator for Wipe<'a, N, R> {
         self.end = N + used_len;
         let pos = self.position;
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
+        for (i, slot) in buf.iter_mut().enumerate().take(len) {
             let j = pos + i;
-            buf[i] = if j < N {
+            *slot = if j < N {
                 RGB8 { r: 0, g: 0, b: 0 }
             } else if j < N + used_len {
                 if self.colour_mode {

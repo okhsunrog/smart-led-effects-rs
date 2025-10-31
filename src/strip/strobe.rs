@@ -99,9 +99,7 @@ impl<const N: usize, R: RngCore> EffectIterator for Strobe<N, R> {
             g: px.green,
             b: px.blue,
         };
-        for i in 0..len {
-            buf[i] = out;
-        }
+        for slot in buf.iter_mut().take(len) { *slot = out; }
         Some(len)
     }
 

@@ -28,6 +28,11 @@ impl<const N: usize> Breathe<N> {
             step: step_size.unwrap_or(Self::DEFAULT_STEP),
         }
     }
+
+    pub fn white(step_size: Option<f32>) -> Self {
+        let white = crate::RGB8 { r: 255, g: 255, b: 255 };
+        Self::new_fixed(Some(white), step_size)
+    }
 }
 
 impl<const N: usize> EffectIterator for Breathe<N> {
@@ -53,9 +58,7 @@ impl<const N: usize> EffectIterator for Breathe<N> {
         }
         let px = crate::utils::hsv_to_rgb8_pixel(self.colour);
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
-            buf[i] = px;
-        }
+        for slot in buf.iter_mut().take(len) { *slot = px; }
         Some(len)
     }
 
@@ -114,9 +117,7 @@ impl<const N: usize, R: RngCore> EffectIterator for BreatheRandom<N, R> {
         }
         let px = crate::utils::hsv_to_rgb8_pixel(self.colour);
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
-            buf[i] = px;
-        }
+        for slot in buf.iter_mut().take(len) { *slot = px; }
         Some(len)
     }
 

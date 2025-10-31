@@ -20,6 +20,8 @@ impl<const N: usize> RunningLights<N> {
             period: period.unwrap_or(N.max(1)),
         }
     }
+
+    pub fn white(reverse: bool) -> Self { Self::new(Some(RGB8 { r:255, g:255, b:255 }), reverse, None) }
 }
 
 impl<const N: usize> EffectIterator for RunningLights<N> {
@@ -29,7 +31,7 @@ impl<const N: usize> EffectIterator for RunningLights<N> {
 
     fn next_line(&mut self, buf: &mut [RGB8], _dt: u32) -> Option<usize> {
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
+        for (i, slot) in buf.iter_mut().enumerate().take(len) {
             let phase = (i + self.position) % self.period;
             let half = self.period / 2;
             let brightness = if phase < half {
@@ -38,8 +40,8 @@ impl<const N: usize> EffectIterator for RunningLights<N> {
                 ((self.period - phase) as f32) / (half as f32)
             };
             let mut hsv = self.colour;
-            hsv.value = brightness.min(1.0).max(0.0);
-            buf[i] = hsv_to_rgb8_pixel(hsv);
+            hsv.value = brightness.clamp(0.0, 1.0);
+            *slot = hsv_to_rgb8_pixel(hsv);
         }
         if self.reverse {
             if self.position == 0 {

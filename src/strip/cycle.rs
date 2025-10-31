@@ -15,6 +15,8 @@ impl<const N: usize> Cycle<N> {
             step_size,
         }
     }
+
+    pub fn new_default() -> Self { Self::new(None) }
 }
 
 impl<const N: usize> EffectIterator for Cycle<N> {
@@ -35,9 +37,7 @@ impl<const N: usize> EffectIterator for Cycle<N> {
             b: srgb8.blue,
         };
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
-            buf[i] = px;
-        }
+        for slot in buf.iter_mut().take(len) { *slot = px; }
         Some(len)
     }
 

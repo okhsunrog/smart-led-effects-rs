@@ -40,6 +40,8 @@ impl<const N: usize, R: RngCore> Twinkle<N, R> {
         Self::new(rng, colour, Some(20), Some(0.4), Some(1.0))
     }
 
+    pub fn white(rng: R) -> Self { Self::sparkle(rng, Some(Srgb::<u8>::new(255, 255, 255))) }
+
     fn generate_sparkle(&mut self) {
         let index = (self.rng.next_u32() as usize) % N;
         let mut sparkle = match self.colour {
@@ -80,13 +82,9 @@ impl<const N: usize, R: RngCore> EffectIterator for Twinkle<N, R> {
             self.generate_sparkle();
         }
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
+        for (i, slot) in buf.iter_mut().enumerate().take(len) {
             let p: Srgb<u8> = Srgb::from_color(self.current[i]).into_format();
-            buf[i] = RGB8 {
-                r: p.red,
-                g: p.green,
-                b: p.blue,
-            };
+            *slot = RGB8 { r: p.red, g: p.green, b: p.blue };
         }
         Some(len)
     }

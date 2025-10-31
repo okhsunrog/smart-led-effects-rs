@@ -63,13 +63,9 @@ impl<const N: usize, R: RngCore> EffectIterator for Meteor<N, R> {
         }
         // write to output
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
+        for (i, slot) in buf.iter_mut().enumerate().take(len) {
             let p = self.current[i].into_format::<u8>();
-            buf[i] = RGB8 {
-                r: p.red,
-                g: p.green,
-                b: p.blue,
-            };
+            *slot = RGB8 { r: p.red, g: p.green, b: p.blue };
         }
         Some(len)
     }

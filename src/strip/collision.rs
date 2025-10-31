@@ -184,22 +184,16 @@ impl<const N: usize, R: RngCore> EffectIterator for Collision<N, R> {
             for pixel in self.current.iter() {
                 if pixel.red > RESET_VAL || pixel.green > RESET_VAL || pixel.blue > RESET_VAL {
                     let len = core::cmp::min(N, buf.len());
-                    for i in 0..len {
+                    for (i, slot) in buf.iter_mut().enumerate().take(len) {
                         let p = self.current[i].into_format::<u8>();
-                        buf[i] = RGB8 {
-                            r: p.red,
-                            g: p.green,
-                            b: p.blue,
-                        };
+                        *slot = RGB8 { r: p.red, g: p.green, b: p.blue };
                     }
                     return Some(len);
                 }
             }
             self.reset();
             let len = core::cmp::min(N, buf.len());
-            for i in 0..len {
-                buf[i] = RGB8 { r: 0, g: 0, b: 0 };
-            }
+            for slot in buf.iter_mut().take(len) { *slot = RGB8 { r:0, g:0, b:0 }; }
             Some(len)
         }
     }

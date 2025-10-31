@@ -1,5 +1,5 @@
 use crate::{strip::EffectIterator, RGB8};
-use palette::{FromColor, Hsv, Mix, Srgb};
+use palette::{Mix, Srgb};
 use rand_core::RngCore;
 
 pub struct Sparkle {
@@ -20,7 +20,6 @@ impl<const N: usize, const S: usize, R: RngCore> Christmas<N, S, R> {
     const DEFAULT_FREQUENCY: u8 = 0x04;
     const DEFAULT_PROBABILITY: f32 = 0.1;
     const DEFAULT_FADE: f32 = 0.4;
-    const BASE_BRIGHTNESS: f32 = 1.0;
     const BACKGROUND: Srgb = Srgb::new(6.0 / 255.0, 108.0 / 255.0, 22.0 / 255.0);
 
     pub fn new(rng: R, sparkle: Option<u8>, probability: Option<f32>, fade: Option<f32>) -> Self {
@@ -83,12 +82,8 @@ impl<const N: usize, const S: usize, R: RngCore> EffectIterator for Christmas<N,
         let len = core::cmp::min(N, buf.len());
         // background
         let base: Srgb<u8> = Self::BACKGROUND.into_format();
-        for i in 0..len {
-            buf[i] = RGB8 {
-                r: base.red,
-                g: base.green,
-                b: base.blue,
-            };
+        for slot in buf.iter_mut().take(len) {
+            *slot = RGB8 { r: base.red, g: base.green, b: base.blue };
         }
         // add sparkles by mixing onto background
         for s in self.sparkles.iter().filter_map(|x| x.as_ref()) {

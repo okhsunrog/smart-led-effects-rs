@@ -11,11 +11,4 @@ pub fn hsv_to_rgb8_pixel(hsv: Hsv) -> RGB8 {
     }
 }
 
-/// Convert a slice of HSVs into an output buffer of RGB8.
-/// Lengths must match; extra output elements are left untouched.
-pub fn hsv_slice_to_rgb8(out: &mut [RGB8], src: &[Hsv]) {
-    let len = core::cmp::min(out.len(), src.len());
-    for i in 0..len {
-        out[i] = hsv_to_rgb8_pixel(src[i]);
-    }
-}
+// (Intentionally minimal: slice conversion helper removed.)

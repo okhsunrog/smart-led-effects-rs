@@ -29,16 +29,12 @@ impl<'a, const N: usize> EffectIterator for Morse<'a, N> {
         let end = N + self.data.len();
         let pos = self.position;
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
+        for (i, slot) in buf.iter_mut().enumerate().take(len) {
             let j = pos + i;
-            buf[i] = if j < N {
+            *slot = if j < N {
                 RGB8 { r: 0, g: 0, b: 0 }
             } else if j < N + self.data.len() {
-                if self.data[j - N] == 1 {
-                    self.colour
-                } else {
-                    RGB8 { r: 0, g: 0, b: 0 }
-                }
+                if self.data[j - N] == 1 { self.colour } else { RGB8 { r: 0, g: 0, b: 0 } }
             } else {
                 RGB8 { r: 0, g: 0, b: 0 }
             };

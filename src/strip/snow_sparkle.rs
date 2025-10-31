@@ -18,7 +18,7 @@ impl<const N: usize, R: RngCore> SnowSparkle<N, R> {
     const BASE_BRIGHTNESS: f32 = 0.2;
 
     pub fn new(
-        mut rng: R,
+        rng: R,
         colour: Option<RGB8>,
         sparkle: Option<u8>,
         probability: Option<f32>,
@@ -40,7 +40,7 @@ impl<const N: usize, R: RngCore> SnowSparkle<N, R> {
         }
     }
 
-    pub fn sparkle(mut rng: R, colour: Option<RGB8>) -> Self {
+    pub fn sparkle(rng: R, colour: Option<RGB8>) -> Self {
         let colour = match colour {
             Some(colour) => Some(colour),
             None => Some(RGB8 {
@@ -51,6 +51,8 @@ impl<const N: usize, R: RngCore> SnowSparkle<N, R> {
         };
         Self::new(rng, colour, Some(20), Some(0.4), Some(1.0))
     }
+
+    pub fn white(rng: R) -> Self { Self::sparkle(rng, Some(RGB8 { r: 255, g: 255, b: 255 })) }
 
     fn generate_sparkle(&mut self) {
         let idx = (self.rng.next_u32() as usize) % N;
@@ -84,8 +86,8 @@ impl<const N: usize, R: RngCore> EffectIterator for SnowSparkle<N, R> {
             self.generate_sparkle();
         }
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len {
-            buf[i] = crate::utils::hsv_to_rgb8_pixel(self.current[i]);
+        for (i, slot) in buf.iter_mut().enumerate().take(len) {
+            *slot = crate::utils::hsv_to_rgb8_pixel(self.current[i]);
         }
         Some(len)
     }

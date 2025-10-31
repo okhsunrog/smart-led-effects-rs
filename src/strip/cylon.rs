@@ -1,6 +1,4 @@
-use crate::strip::EffectIterator;
-use std::vec;
-
+use crate::{strip::EffectIterator, RGB8};
 use palette::{FromColor, Hsv, Srgb};
 
 #[derive(Debug, PartialEq)]
@@ -18,93 +16,99 @@ impl Direction {
     }
 }
 
-pub struct Cylon {
+pub struct Cylon<const N: usize> {
     colour: Hsv,
     direction: Direction,
-    brightness: Vec<f32>,
     start: usize,
     size: usize,
     fade: f32,
 }
 
-impl Cylon {
+impl<const N: usize> Cylon<N> {
     const DEFAULT_SIZE: usize = 4;
     const DEFAULT_FADE: f32 = 0.2;
 
-    pub fn new(count: usize, colour: Srgb<u8>, size: Option<usize>, fade: Option<f32>) -> Self {
-        let mut brightness = vec![0.0; count];
-        let size = size.unwrap_or(Cylon::DEFAULT_SIZE);
-
-        for pixel in brightness.iter_mut().take(size) {
-            *pixel = 1.0;
-        }
-
-        Cylon {
+    pub fn new(colour: Srgb<u8>, size: Option<usize>, fade: Option<f32>) -> Self {
+        let size = size.unwrap_or(Self::DEFAULT_SIZE).min(N).max(1);
+        Self {
             colour: Hsv::from_color(colour.into_format()),
-            brightness,
             start: size - 1,
             direction: Direction::Forward,
             size,
-            fade: fade.unwrap_or(Cylon::DEFAULT_FADE),
+            fade: fade.unwrap_or(Self::DEFAULT_FADE),
         }
     }
 }
 
-impl EffectIterator for Cylon {
+impl<const N: usize> EffectIterator for Cylon<N> {
     fn name(&self) -> &'static str {
         "Cylon"
     }
 
-    fn next(&mut self) -> Option<Vec<Srgb<u8>>> {
-        let len = self.brightness.len();
-
-        let mut trail: Vec<f32> = vec![0.0; len];
-
+    fn next_line(&mut self, buf: &mut [RGB8], _dt: u32) -> Option<usize> {
+        let len = core::cmp::min(N, buf.len());
+        // advance position
         match self.direction {
             Direction::Forward => {
-                self.brightness.rotate_right(1);
-                self.start += 1;
-
-                if self.start == len - 1 {
+                if self.start == N - 1 {
                     self.direction.next();
-                }
-
-                let mut val: f32 = 0.8;
-                if self.start + 1 > self.size {
-                    for i in (0..self.start + 1 - self.size).rev() {
-                        trail[i] = val;
-                        val = (val - self.fade).max(0.0);
-                    }
+                } else {
+                    self.start += 1;
                 }
             }
-            _ => {
-                self.brightness.rotate_left(1);
-                self.start -= 1;
+            Direction::Backward => {
                 if self.start == self.size - 1 {
                     self.direction.next();
+                } else {
+                    self.start -= 1;
                 }
+            }
+        }
 
-                if self.start < len - 1 {
-                    let mut val: f32 = 0.8;
-                    for pixel in trail.iter_mut().take(len).skip(self.start) {
-                        *pixel = val;
-                        val = (val - self.fade).max(0.0);
+        // render
+        for i in 0..len {
+            let mut brightness = 0.0f32;
+            // head segment [start - size + 1 ..= start]
+            if self.start + 1 >= self.size {
+                let head_start = self.start + 1 - self.size;
+                if i >= head_start && i <= self.start {
+                    brightness = 1.0;
+                }
+            }
+            // trail
+            let mut val = 0.8f32;
+            match self.direction {
+                Direction::Forward => {
+                    if self.start + 1 > self.size {
+                        let tail_end = self.start + 1 - self.size; // inclusive index behind head
+                        if i <= tail_end {
+                            let dist = (tail_end - i) as f32;
+                            val = (0.8 - self.fade * dist).max(0.0);
+                            brightness += val;
+                        }
+                    }
+                }
+                Direction::Backward => {
+                    if i >= self.start {
+                        let dist = (i - self.start) as f32;
+                        val = (0.8 - self.fade * dist).max(0.0);
+                        brightness += val;
                     }
                 }
             }
-        };
+            let mut hsv = self.colour;
+            hsv.value = brightness.min(1.0);
+            let srgb8: Srgb<u8> = Srgb::from_color(hsv).into_format();
+            buf[i] = RGB8 {
+                r: srgb8.red,
+                g: srgb8.green,
+                b: srgb8.blue,
+            };
+        }
+        Some(len)
+    }
 
-        let out: Vec<Srgb<u8>> = self
-            .brightness
-            .iter()
-            .zip(trail.iter())
-            .map(|(&x, &y)| {
-                let mut pixel = self.colour;
-                pixel.value = (x + y).min(1.0);
-                Srgb::from_color(pixel).into_format::<u8>()
-            })
-            .collect();
-
-        Some(out)
+    fn pixel_count(&self) -> usize {
+        N
     }
 }

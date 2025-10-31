@@ -1,14 +1,14 @@
 # Smart LED Effects
 
 This supplies a collection of effects for usage with individually addressable LED strips such as the WS2812b.
-Each effect returns a vector of colours that can then be sent to your LED driver.
+Each effect renders into a caller-provided buffer of RGB8 pixels (from smart-leds-trait), which you then write with your LED driver.
 
-The EffectIterator trait defines two methods:
-    - `name`
-    - `next`
+The EffectIterator trait defines:
+    - `name()`
+    - `next_line(&mut self, out: &mut [RGB8], dt_ticks: u32) -> Option<usize>`
 
-`name` will just return the name as a static string slice.
-`next` will return the next page of the effect. It uses the `Option` enum, and in the future there will be One Shot effects that end and return `None`. For now, all effects will loop.
+`name` returns the effect name.
+`next_line` advances the effect by `dt_ticks` (time units defined by your app) and fills `out`. All current effects loop indefinitely and return `Some(len)` where `len` is the number of pixels written.
 
 This crate borrows heavily from [fastLED](https://github.com/FastLED/FastLED) and [tweaking4all](https://www.tweaking4all.com/hardware/arduino/adruino-led-strip-effects/). The majority of the effect art is taken straight from here, andd reimplemented in Rust.
 
@@ -36,33 +36,17 @@ Currently only works for strips/loops. But someday the plan is to extend it.
 
 ## Example Usage
 
-```toml
-[dependencies]
-smart_led_effects = 0.1.7
-
-```
-
 ```rust
+use smart_led_effects::{strip::{self, EffectIterator}, RGB8};
 
-use smart_led_effects::{
-    strip::{self, EffectIterator},
-    Srgb,
-};
+const COUNT: usize = 55;
+let mut effect = strip::Rainbow::<COUNT>::new(None);
+let mut buf = [RGB8 { r:0, g:0, b:0 }; COUNT];
 
-//...
-
-    const COUNT: usize = 55;
-    let effect = strip::Rainbow::new(COUNT, None);
-
-    loop {
-        let pixels = effect.next().unwrap();
-    
-        // show pixels
-
-        thread::sleep(Duration::from_millis(10));
-    }
-
-
+// in your frame/timer loop
+let dt_ms = 16; // time since last frame in ms
+let _ = effect.next_line(&mut buf, dt_ms);
+// write `buf` via your SmartLedsWrite driver
 ```
 
 ## References
@@ -70,5 +54,4 @@ use smart_led_effects::{
  - [Palette](https://crates.io/crates/palette)
  - [fastLED](https://github.com/FastLED/FastLED)
  - [tweaking4all](https://www.tweaking4all.com/hardware/arduino/adruino-led-strip-effects/)
-
 

@@ -20,7 +20,10 @@ impl<const N: usize> Rainbow<N> {
         });
         // Ensure the first element is Hsv::new(0,1,1)
         arr[0] = Hsv::new(0.0, 1.0, 1.0);
-        Self { last_state: arr, step_size }
+        Self {
+            last_state: arr,
+            step_size,
+        }
     }
 }
 

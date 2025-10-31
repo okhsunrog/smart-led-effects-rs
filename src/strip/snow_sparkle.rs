@@ -43,7 +43,11 @@ impl<const N: usize, R: RngCore> SnowSparkle<N, R> {
     pub fn sparkle(mut rng: R, colour: Option<RGB8>) -> Self {
         let colour = match colour {
             Some(colour) => Some(colour),
-            None => Some(RGB8 { r: 255, g: 255, b: 255 }),
+            None => Some(RGB8 {
+                r: 255,
+                g: 255,
+                b: 255,
+            }),
         };
         Self::new(rng, colour, Some(20), Some(0.4), Some(1.0))
     }
@@ -55,7 +59,9 @@ impl<const N: usize, R: RngCore> SnowSparkle<N, R> {
         let v = 0.5 + (self.rng.next_u32() as f32 / u32::MAX as f32) * 0.5;
         sparkle.value = v;
         let chance = self.rng.next_u32() as f32 / u32::MAX as f32;
-        if chance < self.probability { self.current[idx] = sparkle; }
+        if chance < self.probability {
+            self.current[idx] = sparkle;
+        }
     }
 
     fn fade_sparkles(&mut self) {
@@ -66,17 +72,25 @@ impl<const N: usize, R: RngCore> SnowSparkle<N, R> {
 }
 
 impl<const N: usize, R: RngCore> EffectIterator for SnowSparkle<N, R> {
-    fn name(&self) -> &'static str { "SnowSparkle" }
+    fn name(&self) -> &'static str {
+        "SnowSparkle"
+    }
 
     fn next_line(&mut self, buf: &mut [RGB8], _dt: u32) -> Option<usize> {
         self.fade_sparkles();
         // 0..frequency random sparkles per frame
         let chances = (self.rng.next_u32() % self.frequency as u32) as u8;
-        for _ in 0..chances { self.generate_sparkle(); }
+        for _ in 0..chances {
+            self.generate_sparkle();
+        }
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len { buf[i] = crate::utils::hsv_to_rgb8_pixel(self.current[i]); }
+        for i in 0..len {
+            buf[i] = crate::utils::hsv_to_rgb8_pixel(self.current[i]);
+        }
         Some(len)
     }
 
-    fn pixel_count(&self) -> usize { N }
+    fn pixel_count(&self) -> usize {
+        N
+    }
 }

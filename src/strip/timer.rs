@@ -1,81 +1,98 @@
-use crate::strip::EffectIterator;
+use crate::{strip::EffectIterator, RGB8};
 use palette::{Mix, Srgb};
-use std::time::{Duration, Instant};
 
-pub struct Timer {
-    count: usize,
-    duration: Duration,
+pub struct Timer<const N: usize> {
+    total_ticks: u32,
     start_colour: Srgb,
     end_colour: Srgb,
     gradient: bool,
-    pixels_per_second: f32,
-    start: Instant,
+    pixels_per_tick: f32,
+    elapsed_ticks: u32,
     running: bool,
 }
 
-impl Timer {
+impl<const N: usize> Timer<N> {
     const DEFAULT_START_COLOUR: Srgb = Srgb::new(0.0, 0.0, 1.0);
     const DEFAULT_END_COLOUR: Srgb = Srgb::new(1.0, 0.0, 0.0);
     pub fn new(
-        count: usize,
-        duration: Duration,
+        total_ticks: u32,
         start_colour: Option<Srgb>,
         end_colour: Option<Srgb>,
         gradient: Option<bool>,
         start: bool,
     ) -> Self {
-        Timer {
-            count,
-            duration,
+        Self {
+            total_ticks,
             start_colour: start_colour.unwrap_or(Self::DEFAULT_START_COLOUR),
             end_colour: end_colour.unwrap_or(Self::DEFAULT_END_COLOUR),
             gradient: gradient.unwrap_or(false),
-            pixels_per_second: (count as f32) / (duration.as_millis() as f32 / 1000.0),
-            start: Instant::now(),
+            pixels_per_tick: N as f32 / total_ticks.max(1) as f32,
+            elapsed_ticks: 0,
             running: start,
         }
     }
 
     pub fn start(&mut self) {
-        self.start = Instant::now();
+        self.elapsed_ticks = 0;
         self.running = true;
     }
-
     pub fn stop(&mut self) {
         self.running = false;
     }
-
     pub fn reset(&mut self) {
-        self.start = Instant::now();
+        self.elapsed_ticks = 0;
     }
 }
 
-impl EffectIterator for Timer {
+impl<const N: usize> EffectIterator for Timer<N> {
     fn name(&self) -> &'static str {
         "Timer"
     }
 
-    fn next(&mut self) -> Option<Vec<Srgb<u8>>> {
-        let mut out = vec![Srgb::new(0u8, 0u8, 0u8); self.count];
-        let elapsed = self.start.elapsed().as_secs();
-        if elapsed >= self.duration.as_secs() {
-            self.reset();
-            return Some(out);
+    fn next_line(&mut self, buf: &mut [RGB8], dt_ticks: u32) -> Option<usize> {
+        let len = core::cmp::min(N, buf.len());
+        for i in 0..len {
+            buf[i] = RGB8 { r: 0, g: 0, b: 0 };
         }
-        let pixels = self.count - (self.pixels_per_second * elapsed as f32).ceil() as usize;
+        if !self.running {
+            return Some(len);
+        }
+        self.elapsed_ticks = self.elapsed_ticks.saturating_add(dt_ticks);
+        if self.elapsed_ticks >= self.total_ticks {
+            self.reset();
+            return Some(len);
+        }
+        let elapsed = self.elapsed_ticks as f32;
+        let progressed = (self.pixels_per_tick * elapsed) as usize;
+        let pixels = N.saturating_sub(progressed);
         if self.gradient {
-            for (i, pixel) in out.iter_mut().take(pixels).enumerate() {
-                *pixel = self
+            for i in 0..core::cmp::min(pixels, len) {
+                let p: Srgb<u8> = self
                     .end_colour
-                    .mix(self.start_colour, i as f32 / self.count as f32)
+                    .mix(self.start_colour, i as f32 / N as f32)
                     .into_format();
+                buf[i] = RGB8 {
+                    r: p.red,
+                    g: p.green,
+                    b: p.blue,
+                };
             }
         } else {
-            for pixel in out.iter_mut().take(pixels) {
-                let mix = elapsed as f32 / self.duration.as_secs() as f32;
-                *pixel = self.start_colour.mix(self.end_colour, mix).into_format();
+            let mix = elapsed / self.total_ticks as f32;
+            let p: Srgb<u8> = self.start_colour.mix(self.end_colour, mix).into_format();
+            let px = RGB8 {
+                r: p.red,
+                g: p.green,
+                b: p.blue,
+            };
+            for i in 0..core::cmp::min(pixels, len) {
+                buf[i] = px;
             }
         }
-        Some(out)
+        Some(len)
+    }
+
+    fn pixel_count(&self) -> usize {
+        N
     }
 }

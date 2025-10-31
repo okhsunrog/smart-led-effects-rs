@@ -1,8 +1,11 @@
 use crate::{strip::EffectIterator, RGB8};
-use palette::{Hsv};
+use palette::Hsv;
 use rand_core::RngCore;
 
-enum Direction { Up, Down }
+enum Direction {
+    Up,
+    Down,
+}
 
 /// Non-random Breathe (fixed hue)
 pub struct Breathe<const N: usize> {
@@ -19,18 +22,26 @@ impl<const N: usize> Breathe<N> {
             None => Hsv::new(0.0, 1.0, 1.0),
         };
         colour.value = 0.0;
-        Self { colour, direction: Direction::Up, step: step_size.unwrap_or(Self::DEFAULT_STEP) }
+        Self {
+            colour,
+            direction: Direction::Up,
+            step: step_size.unwrap_or(Self::DEFAULT_STEP),
+        }
     }
 }
 
 impl<const N: usize> EffectIterator for Breathe<N> {
-    fn name(&self) -> &'static str { "Breathe" }
+    fn name(&self) -> &'static str {
+        "Breathe"
+    }
 
     fn next_line(&mut self, buf: &mut [RGB8], _dt: u32) -> Option<usize> {
         match self.direction {
             Direction::Up => {
                 self.colour.value += self.step;
-                if self.colour.value >= 1.0 { self.direction = Direction::Down; }
+                if self.colour.value >= 1.0 {
+                    self.direction = Direction::Down;
+                }
             }
             Direction::Down => {
                 self.colour.value -= self.step;
@@ -42,11 +53,15 @@ impl<const N: usize> EffectIterator for Breathe<N> {
         }
         let px = crate::utils::hsv_to_rgb8_pixel(self.colour);
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len { buf[i] = px; }
+        for i in 0..len {
+            buf[i] = px;
+        }
         Some(len)
     }
 
-    fn pixel_count(&self) -> usize { N }
+    fn pixel_count(&self) -> usize {
+        N
+    }
 }
 
 /// Random Breathe: picks a new random hue when the cycle resets.
@@ -64,18 +79,27 @@ impl<const N: usize, R: RngCore> BreatheRandom<N, R> {
         let hue = (rng.next_u32() as f32 / u32::MAX as f32) * 360.0;
         let mut colour = Hsv::new(hue, 1.0, 1.0);
         colour.value = 0.0;
-        Self { colour, rng, direction: Direction::Up, step: step_size.unwrap_or(Self::DEFAULT_STEP) }
+        Self {
+            colour,
+            rng,
+            direction: Direction::Up,
+            step: step_size.unwrap_or(Self::DEFAULT_STEP),
+        }
     }
 }
 
 impl<const N: usize, R: RngCore> EffectIterator for BreatheRandom<N, R> {
-    fn name(&self) -> &'static str { "Breathe" }
+    fn name(&self) -> &'static str {
+        "Breathe"
+    }
 
     fn next_line(&mut self, buf: &mut [RGB8], _dt: u32) -> Option<usize> {
         match self.direction {
             Direction::Up => {
                 self.colour.value += self.step;
-                if self.colour.value >= 1.0 { self.direction = Direction::Down; }
+                if self.colour.value >= 1.0 {
+                    self.direction = Direction::Down;
+                }
             }
             Direction::Down => {
                 self.colour.value -= self.step;
@@ -90,9 +114,13 @@ impl<const N: usize, R: RngCore> EffectIterator for BreatheRandom<N, R> {
         }
         let px = crate::utils::hsv_to_rgb8_pixel(self.colour);
         let len = core::cmp::min(N, buf.len());
-        for i in 0..len { buf[i] = px; }
+        for i in 0..len {
+            buf[i] = px;
+        }
         Some(len)
     }
 
-    fn pixel_count(&self) -> usize { N }
+    fn pixel_count(&self) -> usize {
+        N
+    }
 }

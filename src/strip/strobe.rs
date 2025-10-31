@@ -1,8 +1,6 @@
-use palette::{FromColor, Hsv, Srgb};
-use rand::Rng;
-use std::time::{Duration, Instant};
-
 use super::EffectIterator;
+use palette::{FromColor, Hsv, Srgb};
+use rand_core::RngCore;
 
 /// Strobe effect
 ///
@@ -29,41 +27,37 @@ use super::EffectIterator;
 /// let mut effect = Strobe::new(count, colour, period, decay);
 /// ```
 #[derive(Debug)]
-pub struct Strobe {
-    count: usize,
+pub struct Strobe<const N: usize, R: RngCore> {
     colour: Option<Hsv>,
     current_colour: Hsv,
-    period: Duration,
+    period_ticks: u32,
     fade_val: f32,
-    start: Instant,
+    elapsed_ticks: u32,
+    rng: R,
 }
 
-impl Strobe {
-    pub fn new(
-        count: usize,
-        colour: Option<Srgb<u8>>,
-        period: Duration,
-        decay: Option<f32>,
-    ) -> Self {
+impl<const N: usize, R: RngCore> Strobe<N, R> {
+    pub fn new(rng: R, colour: Option<Srgb<u8>>, period_ticks: u32, decay: Option<f32>) -> Self {
         let colour = colour.map(|c| Hsv::from_color(c.into_format::<f32>()));
         let current_colour = match colour {
             Some(colour) => colour,
             None => Hsv::new(0.0, 0.0, 1.0),
         };
-
-        Strobe {
-            count,
+        Self {
             colour,
             current_colour,
-            period,
+            period_ticks,
             fade_val: decay.unwrap_or(0.02),
-            start: Instant::now(),
+            elapsed_ticks: 0,
+            rng,
         }
     }
 
     fn genereate_colour(&mut self) {
-        let mut rng = rand::thread_rng();
-        self.current_colour = Hsv::new(rng.gen_range(0.0..360.0), rng.gen_range(0.0..1.0), 1.0);
+        // derive two floats in [0,1)
+        let h = (self.rng.next_u32() as f32) / (u32::MAX as f32 + 1.0);
+        let s = (self.rng.next_u32() as f32) / (u32::MAX as f32 + 1.0);
+        self.current_colour = Hsv::new(h * 360.0, s, 1.0);
     }
 
     fn fade(&mut self) -> bool {
@@ -82,23 +76,36 @@ impl Strobe {
             None => self.genereate_colour(),
         }
         self.current_colour.value = 1.0;
-        self.start = Instant::now();
+        self.elapsed_ticks = 0;
     }
 }
 
-impl EffectIterator for Strobe {
+impl<const N: usize, R: RngCore> EffectIterator for Strobe<N, R> {
     fn name(&self) -> &'static str {
         "Strobe"
     }
 
-    fn next(&mut self) -> Option<Vec<Srgb<u8>>> {
+    fn next_line(&mut self, buf: &mut [crate::RGB8], dt_ticks: u32) -> Option<usize> {
         if self.fade() {
-            let elapsed = self.start.elapsed().as_secs();
-            if elapsed >= self.period.as_secs() {
+            self.elapsed_ticks = self.elapsed_ticks.saturating_add(dt_ticks);
+            if self.elapsed_ticks >= self.period_ticks {
                 self.reset();
             }
         }
-        let out = vec![Srgb::from_color(self.current_colour).into_format::<u8>(); self.count];
-        Some(out)
+        let len = core::cmp::min(N, buf.len());
+        let px: Srgb<u8> = Srgb::from_color(self.current_colour).into_format();
+        let out = crate::RGB8 {
+            r: px.red,
+            g: px.green,
+            b: px.blue,
+        };
+        for i in 0..len {
+            buf[i] = out;
+        }
+        Some(len)
+    }
+
+    fn pixel_count(&self) -> usize {
+        N
     }
 }

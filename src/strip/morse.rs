@@ -1,82 +1,64 @@
-use crate::strip::{EffectIterator, Wipe};
-use palette::Srgb;
+use crate::{strip::EffectIterator, RGB8};
 
-pub struct Morse {
-    wipe: Wipe,
+// A minimal Morse effect that slides pre-encoded bits across the strip using Wipe-like logic,
+// but without heap. The message must be provided pre-encoded as bits slice (1=on, 0=off).
+pub struct Morse<'a, const N: usize> {
+    data: &'a [u8], // sequence of 0/1
+    position: usize,
+    reverse: bool,
+    colour: RGB8,
 }
 
-impl Morse {
-    pub fn new(count: usize, message: &str, colour: Option<Srgb<u8>>, reverse: bool) -> Self {
-        let code = Self::string_to_morse(message);
-
-        let colour = colour.unwrap_or(Srgb::new(255, 0, 0));
-
-        let code = code
-            .iter()
-            .map(|&x| if x == 1 { colour } else { Srgb::new(0, 0, 0) })
-            .collect::<Vec<Srgb<u8>>>();
-
-        let wipe = Wipe::new(count, code, reverse);
-
-        Morse { wipe }
-    }
-
-    fn string_to_morse(message: &str) -> Vec<u8> {
-        let mut out = Vec::new();
-        for c in message.chars() {
-            match c {
-                'a' | 'A' => out.extend(vec![1, 0, 1, 1, 1]),
-                'b' | 'B' => out.extend(vec![1, 1, 1, 0, 1, 0, 1, 0, 1]),
-                'c' | 'C' => out.extend(vec![1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1]),
-                'd' | 'D' => out.extend(vec![1, 1, 1, 0, 1, 0, 1]),
-                'e' | 'E' => out.extend(vec![1, 1, 1, 0]),
-                'f' | 'F' => out.extend(vec![1, 0, 1, 0, 1, 1, 1, 0, 1]),
-                'g' | 'G' => out.extend(vec![1, 1, 1, 0, 1, 1, 1, 0, 1]),
-                'h' | 'H' => out.extend(vec![1, 0, 1, 0, 1, 0, 1]),
-                'i' | 'I' => out.extend(vec![1, 0, 1]),
-                'j' | 'J' => out.extend(vec![1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1]),
-                'k' | 'K' => out.extend(vec![1, 1, 1, 0, 1, 0, 1, 1, 1]),
-                'l' | 'L' => out.extend(vec![1, 0, 1, 1, 1, 0, 1, 0, 1]),
-                'm' | 'M' => out.extend(vec![1, 1, 1, 0, 1, 1, 1]),
-                'n' | 'N' => out.extend(vec![1, 1, 1, 0, 1]),
-                'o' | 'O' => out.extend(vec![1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1]),
-                'p' | 'P' => out.extend(vec![1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1]),
-                'q' | 'Q' => out.extend(vec![1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1]),
-                'r' | 'R' => out.extend(vec![1, 0, 1, 1, 1, 0, 1]),
-                's' | 'S' => out.extend(vec![1, 0, 1, 0, 1]),
-                't' | 'T' => out.extend(vec![1, 0]),
-                'u' | 'U' => out.extend(vec![1, 0, 1, 0, 1, 1, 1]),
-                'v' | 'V' => out.extend(vec![1, 0, 1, 0, 1, 0, 1, 1, 1]),
-                'w' | 'W' => out.extend(vec![1, 0, 1, 1, 1, 0, 1, 1, 1]),
-                'x' | 'X' => out.extend(vec![1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1]),
-                'y' | 'Y' => out.extend(vec![1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1]),
-                'z' | 'Z' => out.extend(vec![1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1]),
-                '0' => out.extend(vec![
-                    1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1,
-                ]),
-                '1' => out.extend(vec![1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1]),
-                '2' => out.extend(vec![1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1]),
-                '3' => out.extend(vec![1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1]),
-                '4' => out.extend(vec![1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1]),
-                '5' => out.extend(vec![1, 0, 1, 0, 1, 0, 1, 0, 1]),
-                '6' => out.extend(vec![1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1]),
-                '7' => out.extend(vec![1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1]),
-                '8' => out.extend(vec![1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1]),
-                '9' => out.extend(vec![1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1]),
-                _ => (),
-            }
-            out.extend(vec![0, 0, 0]);
+impl<'a, const N: usize> Morse<'a, N> {
+    pub fn new_bits(data: &'a [u8], colour: Option<RGB8>, reverse: bool) -> Self {
+        Self {
+            data,
+            position: if reverse { N + data.len() } else { 0 },
+            reverse,
+            colour: colour.unwrap_or(RGB8 { r: 255, g: 0, b: 0 }),
         }
-        out
     }
 }
 
-impl EffectIterator for Morse {
+impl<'a, const N: usize> EffectIterator for Morse<'a, N> {
     fn name(&self) -> &'static str {
         "Morse"
     }
 
-    fn next(&mut self) -> Option<Vec<Srgb<u8>>> {
-        self.wipe.next()
+    fn next_line(&mut self, buf: &mut [RGB8], _dt: u32) -> Option<usize> {
+        let end = N + self.data.len();
+        let pos = self.position;
+        let len = core::cmp::min(N, buf.len());
+        for i in 0..len {
+            let j = pos + i;
+            buf[i] = if j < N {
+                RGB8 { r: 0, g: 0, b: 0 }
+            } else if j < N + self.data.len() {
+                if self.data[j - N] == 1 {
+                    self.colour
+                } else {
+                    RGB8 { r: 0, g: 0, b: 0 }
+                }
+            } else {
+                RGB8 { r: 0, g: 0, b: 0 }
+            };
+        }
+        if self.reverse {
+            if self.position == 0 {
+                self.position = end;
+            } else {
+                self.position -= 1;
+            }
+        } else {
+            self.position += 1;
+            if self.position > end {
+                self.position = 0;
+            }
+        }
+        Some(len)
+    }
+
+    fn pixel_count(&self) -> usize {
+        N
     }
 }

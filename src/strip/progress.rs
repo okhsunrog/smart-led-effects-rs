@@ -1,81 +1,76 @@
-use crate::strip::EffectIterator;
+use crate::{strip::EffectIterator, RGB8};
 use palette::{Mix, Srgb};
 
-pub struct ProgressBar {
-    count: usize,
+pub struct ProgressBar<const N: usize> {
     start_colour: Srgb,
     end_colour: Srgb,
     gradient: bool,
     pixels_per_percent: f32,
     current_value: f32,
-    last_value: f32,
-    last_pixels: Option<Vec<Srgb<u8>>>,
 }
 
-impl ProgressBar {
+impl<const N: usize> ProgressBar<N> {
     const DEFAULT_START_COLOUR: Srgb = Srgb::new(0.0, 0.0, 1.0);
     const DEFAULT_END_COLOUR: Srgb = Srgb::new(1.0, 0.0, 0.0);
     pub fn new(
-        count: usize,
         start_colour: Option<Srgb>,
         end_colour: Option<Srgb>,
         gradient: Option<bool>,
     ) -> Self {
-        ProgressBar {
-            count,
+        Self {
             start_colour: start_colour.unwrap_or(Self::DEFAULT_START_COLOUR),
             end_colour: end_colour.unwrap_or(Self::DEFAULT_END_COLOUR),
             gradient: gradient.unwrap_or(false),
-            pixels_per_percent: count as f32 / 100.0,
+            pixels_per_percent: N as f32 / 100.0,
             current_value: 0.0,
-            last_value: 0.0,
-            last_pixels: None,
         }
     }
 
     pub fn set_percentage(&mut self, percentage: f32) {
         self.current_value = percentage;
     }
-
-    pub fn get_output_for_value(&mut self, percentage: f32) -> Vec<Srgb<u8>> {
-        let percentage = percentage.clamp(0.0, 100.0);
-        let pixels = self.count - (self.pixels_per_percent * (100.0 - percentage)) as usize;
-        let mut out = vec![Srgb::new(0.0, 0.0, 0.0).into_format(); self.count];
-
-        if self.gradient {
-            for (i, pixel) in out.iter_mut().take(pixels).enumerate() {
-                *pixel = self
-                    .start_colour
-                    .mix(self.end_colour, i as f32 / self.count as f32)
-                    .into_format();
-            }
-        } else {
-            for pixel in out.iter_mut().take(pixels) {
-                *pixel = self
-                    .start_colour
-                    .mix(self.end_colour, percentage / 100.0)
-                    .into_format();
-            }
-        }
-
-        out
-    }
 }
 
-impl EffectIterator for ProgressBar {
+impl<const N: usize> EffectIterator for ProgressBar<N> {
     fn name(&self) -> &'static str {
         "ProgressBar"
     }
 
-    fn next(&mut self) -> Option<Vec<Srgb<u8>>> {
-        if self.current_value == self.last_value {
-            if let Some(pixels) = self.last_pixels.take() {
-                return Some(pixels);
+    fn next_line(&mut self, buf: &mut [RGB8], _dt: u32) -> Option<usize> {
+        let percentage = self.current_value.clamp(0.0, 100.0);
+        let pixels = N - (self.pixels_per_percent * (100.0 - percentage)) as usize;
+        let len = core::cmp::min(N, buf.len());
+        for i in 0..len {
+            buf[i] = RGB8 { r: 0, g: 0, b: 0 };
+        }
+        if self.gradient {
+            for i in 0..core::cmp::min(pixels, len) {
+                let p: Srgb<u8> = self
+                    .start_colour
+                    .mix(self.end_colour, i as f32 / N as f32)
+                    .into_format();
+                buf[i] = RGB8 {
+                    r: p.red,
+                    g: p.green,
+                    b: p.blue,
+                };
+            }
+        } else {
+            let mix = percentage / 100.0;
+            let p: Srgb<u8> = self.start_colour.mix(self.end_colour, mix).into_format();
+            let px = RGB8 {
+                r: p.red,
+                g: p.green,
+                b: p.blue,
+            };
+            for i in 0..core::cmp::min(pixels, len) {
+                buf[i] = px;
             }
         }
-        let out = self.get_output_for_value(self.current_value);
-        self.last_value = self.current_value;
-        self.last_pixels = Some(out.clone());
-        Some(out)
+        Some(len)
+    }
+
+    fn pixel_count(&self) -> usize {
+        N
     }
 }

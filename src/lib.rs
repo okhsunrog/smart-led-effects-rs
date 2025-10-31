@@ -51,6 +51,16 @@
 //! thread::sleep(Duration::from_millis(10));
 //! }
 //!
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 pub mod strip;
 mod utils;
-pub use palette::Srgb;
+
+// Public pixel type for outputs
+pub use smart_leds_trait::RGB8;
+
+#[cfg(feature = "time-embassy")]
+pub mod time;

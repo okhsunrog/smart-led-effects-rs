@@ -13,5 +13,25 @@ keywords = ["ws2812", "neopixel", "smart-leds"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-palette = "0.7.3"
-rand = "0.8.5"
+palette = { version = "0.7.3", default-features = false, features = ["libm"] }
+rand_core = { version = "0.9", default-features = false }
+smart-leds-trait = { version = "0.2", default-features = false }
+
+[dependencies.heapless]
+version = "0.8"
+optional = true
+default-features = false
+
+[dependencies.embassy-time]
+version = "0.3"
+optional = true
+default-features = false
+
+[features]
+default = []
+# Enable heap-allocating conveniences (Vec, Box) when desired
+alloc = []
+# std implies alloc and enables std-only demos/helpers
+std = ["alloc", "palette/std"]
+# Optional helper adapters
+time-embassy = ["embassy-time"]

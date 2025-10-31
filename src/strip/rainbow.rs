@@ -1,46 +1,47 @@
-use crate::strip::EffectIterator;
-use palette::{FromColor, Hsv, ShiftHueAssign, Srgb};
+use crate::{strip::EffectIterator, RGB8};
+use palette::{Hsv, ShiftHueAssign};
 
-pub struct Rainbow {
-    last_state: Vec<Hsv>,
+pub struct Rainbow<const N: usize> {
+    last_state: [Hsv; N],
     step_size: f32,
 }
 
-impl Rainbow {
-    pub fn new(count: usize, steps: Option<usize>) -> Self {
-        let mut last_state = Vec::new();
-        let mut color = Hsv::new(0.0, 1.0, 1.0);
-        last_state.push(color);
-        let separation = 360.0 / count as f32;
+impl<const N: usize> Rainbow<N> {
+    pub fn new(steps: Option<usize>) -> Self {
         let step = steps.unwrap_or(360);
         let step_size = 360.0 / step as f32;
-
-        for _ in 1..count {
-            color.shift_hue_assign(separation);
-            last_state.push(color);
-        }
-        Rainbow {
-            last_state,
-            step_size,
-        }
+        let separation = 360.0 / N as f32;
+        let mut color = Hsv::new(0.0, 1.0, 1.0);
+        let mut arr: [Hsv; N] = core::array::from_fn(|i| {
+            if i > 0 {
+                color.shift_hue_assign(separation);
+            }
+            color
+        });
+        // Ensure the first element is Hsv::new(0,1,1)
+        arr[0] = Hsv::new(0.0, 1.0, 1.0);
+        Self { last_state: arr, step_size }
     }
 }
 
-impl EffectIterator for Rainbow {
+impl<const N: usize> EffectIterator for Rainbow<N> {
     fn name(&self) -> &'static str {
         "Rainbow"
     }
 
-    fn next(&mut self) -> Option<Vec<Srgb<u8>>> {
+    fn next_line(&mut self, buf: &mut [RGB8], _dt: u32) -> Option<usize> {
         for pixel in self.last_state.iter_mut() {
             pixel.shift_hue_assign(self.step_size);
         }
+        let len = core::cmp::min(N, buf.len());
+        for i in 0..len {
+            let rgb = crate::utils::hsv_to_rgb8_pixel(self.last_state[i]);
+            buf[i] = rgb;
+        }
+        Some(len)
+    }
 
-        Some(
-            self.last_state
-                .iter()
-                .map(|x| Srgb::from_color(*x).into_format::<u8>())
-                .collect::<Vec<Srgb<u8>>>(),
-        )
+    fn pixel_count(&self) -> usize {
+        N
     }
 }

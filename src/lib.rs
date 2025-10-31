@@ -61,6 +61,8 @@ mod utils;
 
 // Public pixel type for outputs
 pub use smart_leds_trait::RGB8;
+// Re-export Srgb so consumers need not depend on palette directly.
+pub use palette::Srgb;
 
 #[cfg(feature = "time-embassy")]
 pub mod time;
